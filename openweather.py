@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 import time
 from datetime import datetime
-from config import city, country, api_key
+from config import city, country, api_key_openweather
 
 num_readings = 10
 interval_minutes = 60
@@ -12,7 +12,7 @@ data_df = pd.DataFrame(columns=['Timestamp', 'Temperature (°C)', 'Humidity (%)'
 for i in range(num_readings):
     try:
 
-        url = f'http://api.openweathermap.org/data/2.5/weather?q={city},{country}&appid={api_key}'
+        url = f'http://api.openweathermap.org/data/2.5/weather?q={city},{country}&appid={api_key_openweather}'
         response = requests.get(url)
         if response.status_code == 200:
             data = response.json()
