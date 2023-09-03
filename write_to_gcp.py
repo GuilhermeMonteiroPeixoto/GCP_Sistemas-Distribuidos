@@ -3,8 +3,14 @@ import pandas as pd
 from google.cloud import bigquery
 from google.cloud.exceptions import NotFound
 from weather_api import get_weather_data
+from config import (
+    google_cloud_credentials,
+    dataset_name,
+    table_name,
+)
 
-os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "YOUR_CREDENTIALS_FILE.json"
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = google_cloud_credentials
 
 client = bigquery.Client()
 
@@ -60,6 +66,6 @@ if __name__ == "__main__":
         
         data_to_insert = data_df.to_records(index=False)
 
-        bq_create_dataset(client, "YOUR_DATASET_NAME")
-        bq_create_table(client, "YOUR_DATASET_NAME", "YOUR_TABLE_NAME")
-        export_items_to_bigquery(client, "YOUR_DATASET_NAME", "YOUR_TABLE_NAME", data_to_insert)
+        bq_create_dataset(client, dataset_name)
+        bq_create_table(client, dataset_name, table_name)
+        export_items_to_bigquery(client, dataset_name, table_name, data_to_insert)
