@@ -1,22 +1,54 @@
+import os
 import pandas as pd
 from google.cloud import bigquery
+from google.cloud.exceptions import NotFound
 from weather_api import get_weather_data
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "YOUR_CREDENTIALS_FILE.json"
 
 client = bigquery.Client()
 
+def bq_create_dataset(client, dataset_name):
+    dataset_ref = client.dataset(dataset_name)
 
-def write_to_bigquery(data):
+    try:
+        dataset = client.get_dataset(dataset_ref)
+        print('Dataset {} already exists.'.format(dataset_name))
+    except NotFound:
+        dataset = bigquery.Dataset(dataset_ref)
+        dataset.location = 'US'
+        dataset = client.create_dataset(dataset)
+        print('Dataset {} created.'.format(dataset_name))
+    return dataset
 
-    table_id = "seu_projeto.sua_dataset.sua_tabela"
+def bq_create_table(client, dataset_name, table_name):
+    dataset_ref = client.dataset(dataset_name)
 
-    df = pd.DataFrame(data, index=[0])
+    table_ref = dataset_ref.table(table_name)
 
-    job_config = bigquery.LoadJobConfig(
-        write_disposition=bigquery.WriteDisposition.WRITE_APPEND
-    )
-    
-    client.load_table_from_dataframe(df, table_id, job_config=job_config).result()
-    print("Dados escritos no BigQuery com sucesso.")
+    try:
+        table = client.get_table(table_ref)
+        print('Table {} already exists.'.format(table_name))
+    except NotFound:
+        schema = [
+            bigquery.SchemaField('Timestamp', 'STRING', mode='REQUIRED'),
+            bigquery.SchemaField('Temperature (°C)', 'FLOAT', mode='REQUIRED'),
+            bigquery.SchemaField('Humidity (%)', 'INTEGER', mode='REQUIRED'),
+        ]
+        table = bigquery.Table(table_ref, schema=schema)
+        table = client.create_table(table)
+        print('Table {} created.'.format(table_name))
+    return table
+
+def export_items_to_bigquery(client, dataset_name, table_name, data):
+
+    dataset_ref = client.dataset(dataset_name)
+
+    table_ref = dataset_ref.table(table_name)
+    table = client.get_table(table_ref)
+
+    errors = client.insert_rows(table, data)
+    assert errors == []
 
 if __name__ == "__main__":
 
@@ -25,11 +57,9 @@ if __name__ == "__main__":
     if weather_data:
 
         data_df = pd.read_csv("dados_climaticos.csv")
+        
+        data_to_insert = data_df.to_records(index=False)
 
-        combined_data = {
-            "Timestamp": [weather_data["current"]["last_updated"]],
-            "Temperature (°C)": [weather_data["current"]["temp_c"]],
-            "Humidity (%)": [weather_data["current"]["humidity"]]
-        }
-
-        write_to_bigquery(combined_data)
+        bq_create_dataset(client, "YOUR_DATASET_NAME")
+        bq_create_table(client, "YOUR_DATASET_NAME", "YOUR_TABLE_NAME")
+        export_items_to_bigquery(client, "YOUR_DATASET_NAME", "YOUR_TABLE_NAME", data_to_insert)
